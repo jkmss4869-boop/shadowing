@@ -367,11 +367,59 @@
             padding: 20px 0;
         }
 
+        .score-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 15px 0 20px 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+
         .total-score {
-            font-size: 3.5rem;
-            font-weight: 700;
+            font-size: 3.2rem;
+            font-weight: 800;
             color: var(--primary);
-            margin: 10px 0;
+            margin: 5px 0;
+            letter-spacing: -1px;
+        }
+
+        .rating-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 24px;
+            border-radius: 9999px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-top: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+        }
+
+        .rating-excellent {
+            background-color: #dcfce7;
+            color: #15803d;
+            border: 2px solid #86efac;
+        }
+
+        .rating-good {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border: 2px solid #93c5fd;
+        }
+
+        .rating-average {
+            background-color: #fef9c3;
+            color: #a16207;
+            border: 2px solid #fde047;
+        }
+
+        .rating-needs-practice {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            border: 2px solid #fca5a5;
         }
 
         .table-responsive {
@@ -710,8 +758,11 @@
                 <h2 class="title">🎉 Hoàn Thành Bài Tập!</h2>
                 <p class="subtitle" id="result-student-name">Học sinh: Nguyễn Văn A</p>
 
-                <div class="total-score" id="final-score">80</div>
-                <p style="font-weight: 600; color: #6b7280;">Tổng điểm phản xạ của bạn</p>
+                <div class="score-card">
+                    <div class="total-score" id="final-score">0 / 0</div>
+                    <div id="final-rating" class="rating-badge rating-excellent">🌟 Xuất sắc</div>
+                    <p id="rating-desc" style="font-weight: 600; color: #6b7280; margin-top: 10px; font-size: 0.95rem;">Tổng điểm phản xạ của bạn</p>
+                </div>
 
                 <div class="table-responsive">
                     <table>
@@ -1159,7 +1210,32 @@
             if (timerInterval) clearInterval(timerInterval);
             switchScreen('result-screen');
             document.getElementById('result-student-name').innerText = `Học sinh: ${studentName}`;
-            document.getElementById('final-score').innerText = score;
+
+            const maxScore = vocabList.length * 20;
+            document.getElementById('final-score').innerText = `${score} / ${maxScore}`;
+
+            const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
+            const roundPct = Math.round(percentage);
+            const ratingEl = document.getElementById('final-rating');
+            const descEl = document.getElementById('rating-desc');
+
+            if (percentage >= 80) {
+                ratingEl.innerText = "🌟 Xuất sắc";
+                ratingEl.className = "rating-badge rating-excellent";
+                if (descEl) descEl.innerText = `Đạt ${roundPct}% tổng điểm - Rất tuyệt vời!`;
+            } else if (percentage >= 60) {
+                ratingEl.innerText = "👍 Tốt";
+                ratingEl.className = "rating-badge rating-good";
+                if (descEl) descEl.innerText = `Đạt ${roundPct}% tổng điểm - Khá tốt, phát huy nhé!`;
+            } else if (percentage >= 40) {
+                ratingEl.innerText = "👌 Ổn";
+                ratingEl.className = "rating-badge rating-average";
+                if (descEl) descEl.innerText = `Đạt ${roundPct}% tổng điểm - Cần cố gắng hơn nữa!`;
+            } else {
+                ratingEl.innerText = "💪 Cần luyện tập thêm";
+                ratingEl.className = "rating-badge rating-needs-practice";
+                if (descEl) descEl.innerText = `Đạt ${roundPct}% tổng điểm - Hãy luyện tập lại bài này nhé!`;
+            }
 
             // Render bảng chi tiết
             const tbody = document.getElementById('detail-table-body');
@@ -1183,12 +1259,13 @@
             statusEl.innerText = "⏳ Đang đồng bộ kết quả về Google Sheets...";
             statusEl.style.color = "#6b7280";
 
+            const maxScore = vocabList.length * 20;
             const payloadScore = {
                 action: "saveScore",
                 sheetName: currentSheetName,
                 name: studentName,
                 score: score,
-                total: vocabList.length * 10,
+                total: maxScore,
                 gameType: "Speech Reflex"
             };
 
