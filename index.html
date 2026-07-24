@@ -240,6 +240,49 @@
             border-color: #c4b5fd;
         }
 
+        /* --- DRAG & DROP WORD CHIPS --- */
+        .word-chip {
+            background: #ffffff;
+            color: #1e293b;
+            border: 2px solid #cbd5e1;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        .word-chip:hover {
+            border-color: var(--primary);
+            color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(139, 92, 246, 0.2);
+        }
+
+        .word-chip:active {
+            transform: translateY(0);
+        }
+
+        .word-chip.dragging {
+            opacity: 0.4;
+        }
+
+        #drag-answer-zone.drag-over {
+            border-color: var(--primary) !important;
+            background: #f3e8ff !important;
+        }
+
+        #drag-pool-zone.drag-over {
+            background: #e2e8f0 !important;
+        }
+
         /* --- MIC BUTTON & INTERACTION --- */
         .mic-container {
             text-align: center;
@@ -686,21 +729,8 @@
                         <video id="local-player" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; display: none;" controls></video>
                     </div>
 
-                    <div style="text-align: center; margin-bottom: 12px;">
-                        <label
-                            style="cursor: pointer; font-weight: 700; color: var(--primary-dark); display: inline-flex; align-items: center; gap: 8px; background: #f3e8ff; padding: 6px 14px; border-radius: 20px; border: 1px solid var(--primary-light); font-size: 0.9rem;">
-                            <input type="checkbox" id="blind-mode-toggle" onchange="toggleBlindMode()"
-                                style="transform: scale(1.2); cursor: pointer;">
-                            🎧 Chế độ chỉ Luyện Nghe (Ẩn văn bản)
-                        </label>
-                    </div>
-
                     <div id="round-banner" class="badge" style="background: #e0e7ff; color: #3730a3; display: block; text-align: center; margin-bottom: 15px; font-size: 1rem; padding: 10px; border-radius: 10px; font-weight: bold;">
-                        🎯 Hiệp 1: Nghe hiểu & Chọn đáp án đúng (Receptive Skill)
-                    </div>
-
-                    <div class="context-box" id="context-display" style="margin-bottom: 15px;">
-                        I want to buy an ice cream... <span class="blank-space">[____]</span>
+                        🎯 Hiệp 1: Nghe & Kéo thả sắp xếp câu tiếng Anh (Sentence Builder)
                     </div>
 
                     <!-- NÚT PHÁT LẠI ĐOẠN VIDEO -->
@@ -711,14 +741,37 @@
                     </div>
                 </div>
 
-                <!-- BÊN PHẢI: GIAO DIỆN CÂU HỎI TRẮC NGHIỆM / THU ÂM & CÂU TRẢ LỜI -->
+                <!-- BÊN PHẢI: GIAO DIỆN CÂU HỎI KÉO THẢ / THU ÂM & CÂU TRẢ LỜI -->
                 <div class="right-pane">
-                    <!-- HIỆP 1: TRẮC NGHIỆM -->
-                    <div id="round1-ui" style="display: none; background: #f8fafc; padding: 15px; border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
-                        <h3 style="text-align: center; color: #334155; margin-top: 0; margin-bottom: 12px; font-size: 1rem;">
-                            ❓ Đoạn video vừa nói ý nghĩa gì? Chọn đáp án đúng:
+                    <!-- HIỆP 1: KÉO THẢ SẮP XẾP CÂU -->
+                    <div id="round1-ui" style="display: none; background: #f8fafc; padding: 18px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                        <h3 style="text-align: center; color: #334155; margin-top: 0; margin-bottom: 10px; font-size: 1.05rem;">
+                            🧩 Sắp xếp các từ tiếng Anh thành câu hoàn chỉnh:
                         </h3>
-                        <div id="mc-options-container" style="display: grid; grid-template-columns: 1fr; gap: 10px;"></div>
+                        <div id="round1-vi-prompt" style="font-size: 1rem; font-weight: 700; color: #1e293b; text-align: center; margin-bottom: 15px; background: #e0f2fe; padding: 10px 14px; border-radius: 10px; border: 1px solid #bae6fd;">
+                            🇻🇳 <span id="vi-sentence-display">...</span>
+                        </div>
+
+                        <!-- KHUNG THẢ NỐI CÂU (ANSWER ZONE) -->
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 6px;">📥 Câu của bạn:</div>
+                        <div id="drag-answer-zone" style="min-height: 60px; padding: 10px; background: #ffffff; border: 2px dashed #94a3b8; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 15px; transition: all 0.2s;">
+                            <span class="drag-placeholder" style="color: #94a3b8; font-style: italic; font-size: 0.9rem; user-select: none; width: 100%; text-align: center;">Chạm hoặc kéo thả các từ bên dưới vào đây...</span>
+                        </div>
+
+                        <!-- KHO TỪ XÁO TRỘN (WORD POOL) -->
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 6px;">🔀 Kho từ xáo trộn:</div>
+                        <div id="drag-pool-zone" style="min-height: 50px; padding: 10px; background: #f1f5f9; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 15px; transition: all 0.2s;">
+                        </div>
+
+                        <!-- NÚT CHỨC NĂNG: ĐẶT LẠI & KIỂM TRA -->
+                        <div style="display: flex; gap: 10px;">
+                            <button id="drag-reset-btn" class="btn" onclick="resetRound1DragDrop()" style="flex: 1; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 10px; font-size: 0.95rem; border-radius: 10px;">
+                                🔄 Đặt lại
+                            </button>
+                            <button id="drag-check-btn" class="btn btn-primary" onclick="checkRound1DragDrop()" style="flex: 2; padding: 10px; font-size: 0.95rem; border-radius: 10px;">
+                                ✔️ Kiểm tra đáp án
+                            </button>
+                        </div>
                     </div>
 
                     <!-- HIỆP 2: THU ÂM -->
@@ -1090,7 +1143,8 @@
             } else {
                 contextText = contextText.replace(/\[____\]|___/g, "<span class='blank-space'>[____]</span>");
             }
-            document.getElementById('context-display').innerHTML = contextText;
+            const contextEl = document.getElementById('context-display');
+            if (contextEl) contextEl.innerHTML = contextText;
 
             // Cập nhật Gợi ý
             document.getElementById('hint-ipa').innerText = currentVocab.ipa ? `/${currentVocab.ipa}/` : '';
@@ -1116,11 +1170,6 @@
             // Mặc định ẩn bộ thu âm/gõ phím & nút nghe lại khi bắt đầu câu hỏi mới (chỉ hiện khi video dừng)
             setSpeechAndInputVisible(false);
             setSpeakerBtnVisible(false);
-
-            const blindToggle = document.getElementById('blind-mode-toggle');
-            if (blindToggle && blindToggle.checked) {
-                toggleBlindMode(); // Tự động giấu chữ và đọc audio
-            }
         }
 
         // Kiểm tra đáp án (từ Giọng nói hoặc Gõ phím)
@@ -1371,37 +1420,6 @@
         function replayVideoSegment() {
             if (typeof playVideoSegment === "function") {
                 playVideoSegment(currentIndex);
-            }
-        }
-        // ==========================================
-        // HÀM XỬ LÝ CHẾ ĐỘ CHỈ LUYỆN NGHE (BLIND MODE)
-        // ==========================================
-        function toggleBlindMode() {
-            const isChecked = document.getElementById('blind-mode-toggle').checked;
-            const contextBox = document.getElementById('context-display');
-            const currentVocab = vocabList[currentIndex];
-
-            if (!currentVocab) return;
-
-            if (isChecked) {
-                // Khi bật chế độ giấu chữ: Thay thế văn bản bằng Icon Audio
-                contextBox.innerHTML = `
-            <div style="color: var(--primary-dark); font-size: 1.1rem; margin-bottom: 10px;">
-                🎧 <i>[Câu hỏi đang ẩn - Hãy lắng nghe audio]</i>
-            </div>
-            <span class='blank-space' style='font-size: 1.8rem;'>[____]</span>
-        `;
-                // Tự động phát lại video đoạn này cho học sinh nghe
-                replayVideoSegment();
-            } else {
-                // Khi tắt chế độ: Hiển thị lại câu hỏi text bình thường
-                let contextText = currentVocab.context || "";
-                if (!contextText.includes("[____]") && !contextText.includes("___")) {
-                    contextText += " <span class='blank-space'>[____]</span>";
-                } else {
-                    contextText = contextText.replace(/\[____\]|___/g, "<span class='blank-space'>[____]</span>");
-                }
-                contextBox.innerHTML = contextText;
             }
         }
         // ==========================================
@@ -1694,7 +1712,7 @@
                     stopTimeTracker();
 
                     if (currentRound === 1) {
-                        triggerRound1_MultipleChoice();
+                        triggerRound1_DragDrop();
                     } else if (currentRound === 2) {
                         triggerRound2_Dictation();
                     } else if (currentRound === 3) {
@@ -1775,94 +1793,261 @@
         }
 
         // ============================================================================
-        // LOGIC HIỆP 1: TRẮC NGHIỆM Ý NGHĨA (RECEPTIVE SKILL)
+        // ============================================================================
+        // LOGIC HIỆP 1: KÉO THẢ SẮP XẾP CÂU (SENTENCE BUILDER)
         // ============================================================================
 
-        function triggerRound1_MultipleChoice() {
-            setSpeechAndInputVisible(false); // Hiệp 1 tuyệt đối không hiện Mic/Thu âm
-            setSpeakerBtnVisible(true);       // Hiện nút "Nghe lại đoạn video" để học sinh nghe lại nếu muốn
+        let round1Tokens = [];      // [{id: 'chip_0...', text: 'I'}, ...]
+        let placedTokens = [];      // Các từ trong ô đáp án
+        let poolTokens = [];        // Các từ trong kho xáo trộn
+        let round1TargetSentence = "";
+
+        function triggerRound1_DragDrop() {
+            setSpeechAndInputVisible(false); // Hiệp 1 không hiện Mic/Thu âm/ô nhập liệu
+            setSpeakerBtnVisible(true);       // Hiện nút "Nghe lại đoạn video"
 
             const currentVocab = vocabList[currentIndex];
-            const correctMeaning = (currentVocab.meaning || "").trim(); // Cột E
 
-            let distractors = vocabList
-                .filter((item, idx) => idx !== currentIndex && item.meaning && item.meaning.trim() !== correctMeaning)
-                .map(item => item.meaning.trim());
+            // 1. Hiển thị câu tiếng Việt dịch nghĩa
+            const viMeaning = (currentVocab.meaning || currentVocab.word || "").trim();
+            const viDisplay = document.getElementById('vi-sentence-display');
+            if (viDisplay) viDisplay.innerText = viMeaning;
 
-            distractors = [...new Set(distractors)];
-
-            const fallbackDistractors = [
-                "Kỳ lạ, bất thường", "Nguy hiểm", "Cảnh báo", "Bí mật", 
-                "Biến mất", "Cảm ơn", "Chuẩn bị", "Bắt đầu"
-            ];
-            while (distractors.length < 3) {
-                const fb = fallbackDistractors[Math.floor(Math.random() * fallbackDistractors.length)];
-                if (!distractors.includes(fb) && fb !== correctMeaning) {
-                    distractors.push(fb);
-                }
+            // 2. Ẩn câu tiếng Anh trong context-display (buộc học sinh phải luyện nghe)
+            const contextDisplay = document.getElementById('context-display');
+            if (contextDisplay) {
+                contextDisplay.innerHTML = `
+                    <div style="color: var(--primary-dark); font-size: 1rem; text-align: center;">
+                        🎧 <i>[Lắng nghe audio video & chọn các từ bên dưới xếp thành câu hoàn chỉnh]</i>
+                    </div>
+                `;
             }
 
-            distractors = shuffleArray(distractors).slice(0, 3);
-            let allOptions = shuffleArray([correctMeaning, ...distractors]);
+            // 3. Xác định câu tiếng Anh chuẩn
+            let rawContext = currentVocab.context || "";
+            let word = currentVocab.word || "";
+            let fullEnglishSentence = "";
 
-            const container = document.getElementById('mc-options-container');
-            container.innerHTML = '';
+            if (rawContext) {
+                if (rawContext.includes("[____]") || rawContext.includes("___")) {
+                    fullEnglishSentence = rawContext.replace(/\[____\]|___/g, word).trim();
+                } else {
+                    fullEnglishSentence = rawContext.trim();
+                }
+            } else {
+                fullEnglishSentence = word.trim();
+            }
 
-            const labels = ['A', 'B', 'C', 'D'];
-            allOptions.forEach((optionText, idx) => {
-                const btn = document.createElement('button');
-                btn.className = 'btn form-control';
-                btn.style.textAlign = 'left';
-                btn.style.padding = '12px 15px';
-                btn.style.cursor = 'pointer';
-                btn.style.transition = 'all 0.2s';
-                btn.style.background = 'white';
-                btn.style.border = '2px solid #cbd5e1';
-                btn.style.borderRadius = '8px';
-                btn.style.fontWeight = '600';
-                btn.style.color = '#334155';
+            round1TargetSentence = fullEnglishSentence;
 
-                btn.innerHTML = `<span style="color: #6d28d9; font-weight: bold; margin-right: 8px;">${labels[idx]}.</span> ${optionText}`;
-                btn.onclick = () => checkRound1Answer(btn, optionText, correctMeaning);
-                container.appendChild(btn);
-            });
+            // 4. Tách các từ tiếng Anh thành mảng các token
+            let words = fullEnglishSentence.split(/\s+/).filter(w => w.length > 0);
+            round1Tokens = words.map((w, idx) => ({ id: `chip_${idx}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`, text: w }));
+            placedTokens = [];
+
+            // Xáo trộn mảng từ
+            let shuffled = shuffleArray([...round1Tokens]);
+            if (shuffled.length > 1 && shuffled.map(t => t.text).join(' ') === round1Tokens.map(t => t.text).join(' ')) {
+                // Nếu đảo xong mà tình cờ đúng luôn thứ tự ban đầu thì hoán đổi 2 phần tử đầu
+                const temp = shuffled[0];
+                shuffled[0] = shuffled[1];
+                shuffled[1] = temp;
+            }
+            poolTokens = shuffled;
+
+            // Reset UI nút bấm & thông báo
+            const feedbackArea = document.getElementById('feedback-area');
+            if (feedbackArea) {
+                feedbackArea.className = 'feedback';
+                feedbackArea.innerHTML = '';
+            }
+
+            const checkBtn = document.getElementById('drag-check-btn');
+            const resetBtn = document.getElementById('drag-reset-btn');
+            if (checkBtn) checkBtn.disabled = false;
+            if (resetBtn) resetBtn.disabled = false;
+
+            renderDragDropZones();
 
             document.getElementById('round1-ui').style.display = 'block';
         }
 
-        function checkRound1Answer(clickedBtn, selectedText, correctText) {
-            const allBtns = document.getElementById('mc-options-container').querySelectorAll('button');
+        function renderDragDropZones() {
+            const answerZone = document.getElementById('drag-answer-zone');
+            const poolZone = document.getElementById('drag-pool-zone');
+            if (!answerZone || !poolZone) return;
+
+            answerZone.innerHTML = '';
+            poolZone.innerHTML = '';
+
+            if (placedTokens.length === 0) {
+                answerZone.innerHTML = `<span class="drag-placeholder" style="color: #94a3b8; font-style: italic; font-size: 0.9rem; user-select: none; width: 100%; text-align: center;">Chạm hoặc kéo thả các từ bên dưới vào đây...</span>`;
+            } else {
+                placedTokens.forEach(token => {
+                    const chip = createWordChip(token, 'answer');
+                    answerZone.appendChild(chip);
+                });
+            }
+
+            poolTokens.forEach(token => {
+                const chip = createWordChip(token, 'pool');
+                poolZone.appendChild(chip);
+            });
+
+            setupZoneDropEvents(answerZone, 'answer');
+            setupZoneDropEvents(poolZone, 'pool');
+        }
+
+        function createWordChip(token, zoneType) {
+            const chip = document.createElement('div');
+            chip.className = 'word-chip';
+            chip.setAttribute('draggable', 'true');
+            chip.setAttribute('data-id', token.id);
+            chip.innerText = token.text;
+
+            // Hỗ trợ chạm/click để chuyển vị trí từ nhanh chóng
+            chip.onclick = () => {
+                const checkBtn = document.getElementById('drag-check-btn');
+                if (checkBtn && checkBtn.disabled) return; // Nếu đã hoàn thành câu thì khóa click
+
+                if (zoneType === 'pool') {
+                    poolTokens = poolTokens.filter(t => t.id !== token.id);
+                    placedTokens.push(token);
+                } else {
+                    placedTokens = placedTokens.filter(t => t.id !== token.id);
+                    poolTokens.push(token);
+                }
+                renderDragDropZones();
+            };
+
+            // Drag events cho máy tính
+            chip.ondragstart = (e) => {
+                const checkBtn = document.getElementById('drag-check-btn');
+                if (checkBtn && checkBtn.disabled) {
+                    e.preventDefault();
+                    return;
+                }
+                e.dataTransfer.setData('text/plain', token.id);
+                e.dataTransfer.setData('source-zone', zoneType);
+                chip.classList.add('dragging');
+            };
+
+            chip.ondragend = () => {
+                chip.classList.remove('dragging');
+            };
+
+            return chip;
+        }
+
+        function setupZoneDropEvents(zoneEl, targetZoneType) {
+            zoneEl.ondragover = (e) => {
+                e.preventDefault();
+                zoneEl.classList.add('drag-over');
+            };
+
+            zoneEl.ondragleave = () => {
+                zoneEl.classList.remove('drag-over');
+            };
+
+            zoneEl.ondrop = (e) => {
+                e.preventDefault();
+                zoneEl.classList.remove('drag-over');
+
+                const checkBtn = document.getElementById('drag-check-btn');
+                if (checkBtn && checkBtn.disabled) return;
+
+                const tokenId = e.dataTransfer.getData('text/plain');
+                const sourceZone = e.dataTransfer.getData('source-zone');
+
+                if (!tokenId) return;
+
+                let token = null;
+                if (sourceZone === 'pool') {
+                    token = poolTokens.find(t => t.id === tokenId);
+                } else {
+                    token = placedTokens.find(t => t.id === tokenId);
+                }
+
+                if (!token) return;
+
+                poolTokens = poolTokens.filter(t => t.id !== tokenId);
+                placedTokens = placedTokens.filter(t => t.id !== tokenId);
+
+                if (targetZoneType === 'answer') {
+                    placedTokens.push(token);
+                } else {
+                    poolTokens.push(token);
+                }
+
+                renderDragDropZones();
+            };
+        }
+
+        function resetRound1DragDrop() {
+            poolTokens = shuffleArray([...round1Tokens]);
+            placedTokens = [];
             const feedback = document.getElementById('feedback-area');
+            if (feedback) {
+                feedback.className = 'feedback';
+                feedback.innerHTML = '';
+            }
+            renderDragDropZones();
+        }
 
-            allBtns.forEach(btn => btn.disabled = true);
+        function checkRound1DragDrop() {
+            const feedback = document.getElementById('feedback-area');
+            if (placedTokens.length === 0) {
+                if (feedback) {
+                    feedback.className = 'feedback error';
+                    feedback.innerHTML = '⚠️ Vui lòng chọn hoặc kéo các từ vào ô đáp án trước!';
+                }
+                return;
+            }
 
-            if (selectedText === correctText) {
-                clickedBtn.style.background = '#dcfce7';
-                clickedBtn.style.borderColor = '#22c55e';
-                clickedBtn.style.color = '#15803d';
+            const studentSentence = placedTokens.map(t => t.text).join(' ');
 
-                feedback.className = 'feedback success';
-                feedback.innerHTML = '🎉 Chính xác! Bạn đã hiểu đúng ý nghĩa của câu trong video.';
+            // Chuẩn hóa loại bỏ dấu câu và khoảng trắng thừa để so sánh
+            const cleanStudent = studentSentence.trim().toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()。、！？「」\s]/g, "");
+            const cleanTarget = round1TargetSentence.trim().toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()。、！？「」\s]/g, "");
+
+            if (cleanStudent === cleanTarget) {
+                // Đúng!
+                new Audio('confetti.mp3').play().catch(e => console.log("Audio play err:", e));
+                if (typeof confetti === 'function') {
+                    confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+                }
+
+                if (feedback) {
+                    feedback.className = 'feedback success';
+                    feedback.innerHTML = `🎉 Chính xác! Câu hoàn chỉnh là: "<b>${round1TargetSentence}</b>"`;
+                }
+
+                // Cập nhật context-display hiển thị câu tiếng Anh đẹp mắt
+                const contextBox = document.getElementById('context-display');
+                if (contextBox) {
+                    contextBox.innerHTML = `<b>${round1TargetSentence}</b>`;
+                }
 
                 score += 10;
                 document.getElementById('current-score').innerText = score;
+
+                // Khóa nút tương tác
+                document.getElementById('drag-check-btn').disabled = true;
+                document.getElementById('drag-reset-btn').disabled = true;
+
+                // Hiển thị nút Câu tiếp theo
+                const nextBtn = document.getElementById('next-btn');
+                if (nextBtn) {
+                    nextBtn.style.display = 'inline-flex';
+                    nextBtn.focus();
+                }
             } else {
-                clickedBtn.style.background = '#fee2e2';
-                clickedBtn.style.borderColor = '#ef4444';
-                clickedBtn.style.color = '#b91c1c';
-
-                allBtns.forEach(btn => {
-                    if (btn.innerText.includes(correctText)) {
-                        btn.style.background = '#dcfce7';
-                        btn.style.borderColor = '#22c55e';
-                    }
-                });
-
-                feedback.className = 'feedback error';
-                feedback.innerHTML = `❌ Chưa chính xác. Ý nghĩa đúng của câu là: "<b>${correctText}</b>".`;
+                // Sai
+                if (feedback) {
+                    feedback.className = 'feedback error';
+                    feedback.innerHTML = `❌ Chưa đúng thứ tự các từ. Bạn xếp là: "${studentSentence}". Hãy bấm Nghe lại video và thử lại nhé! 🎬`;
+                }
             }
-
-            document.getElementById('next-btn').style.display = 'inline-block';
         }
 
         // ============================================================================
