@@ -836,6 +836,7 @@
         // Web Speech API Variables
         let recognition = null;
         let isListening = false;
+        let speechTimeout = null;
 
         // ==========================================
         // 2. KHỞI TẠO WEB SPEECH API
@@ -845,10 +846,14 @@
 
             if (!SpeechRecognition) {
                 alert("Trình duyệt của bạn không hỗ trợ tính năng nhận diện giọng nói. Vui lòng sử dụng Google Chrome hoặc gõ phím trực tiếp nhé!");
-                document.getElementById('mic-btn').style.display = 'none';
-                document.getElementById('mic-status').innerText = "Vui lòng gõ đáp án vào ô bên dưới";
+                const micBtn = document.getElementById('mic-btn');
+                if (micBtn) micBtn.style.display = 'none';
+                const micStatus = document.getElementById('mic-status');
+                if (micStatus) micStatus.innerText = "Vui lòng gõ đáp án vào ô bên dưới";
                 return;
             }
+
+            if (recognition) return;
 
             recognition = new SpeechRecognition();
             recognition.lang = LANG_CONFIG[currentLang].speechLang;
@@ -859,38 +864,57 @@
                 isListening = true;
                 const micBtn = document.getElementById('mic-btn');
                 const micStatus = document.getElementById('mic-status');
-                micBtn.classList.add('listening');
-                micBtn.innerHTML = "🔴";
-                micStatus.innerText = "Đang lắng nghe... Hãy nói từ cần điền!";
-                micStatus.style.color = "var(--error)";
+                if (micBtn) {
+                    micBtn.classList.add('listening');
+                    micBtn.innerHTML = "🔴";
+                }
+                if (micStatus) {
+                    micStatus.innerText = "Đang lắng nghe... Hãy nói từ cần điền!";
+                    micStatus.style.color = "var(--error)";
+                }
+
+                // Tự động hủy thu âm sau 10 giây nếu trình duyệt bị đơ/treo server Google
+                clearTimeout(speechTimeout);
+                speechTimeout = setTimeout(() => {
+                    if (isListening) {
+                        console.warn("Speech recognition timeout (10s). Aborting...");
+                        stopSpeechRecognition(true);
+                    }
+                }, 10000);
             };
 
             recognition.onresult = function (event) {
+                clearTimeout(speechTimeout);
                 const speechResult = event.results[0][0].transcript.trim();
                 const manualInput = document.getElementById('manual-input');
 
                 // Điền từ nghe được vào ô input
-                manualInput.value = speechResult;
-                document.getElementById('mic-status').innerText = `Đã nghe thấy: "${speechResult}"`;
+                if (manualInput) manualInput.value = speechResult;
+                const micStatus = document.getElementById('mic-status');
+                if (micStatus) micStatus.innerText = `Đã nghe thấy: "${speechResult}"`;
 
                 // Tự động chấm điểm ngay sau khi nói xong
                 checkAnswer(speechResult, 'speech');
             };
 
             recognition.onerror = function (event) {
+                clearTimeout(speechTimeout);
                 console.error("Speech Recognition Error:", event.error);
                 const micStatus = document.getElementById('mic-status');
-                if (event.error === 'no-speech') {
-                    micStatus.innerText = "Không nghe thấy giọng nói, bạn thử bấm nói lại nhé.";
-                } else if (event.error === 'not-allowed') {
-                    micStatus.innerText = "Chưa cấp quyền sử dụng Micro. Vui lòng bật Micro trên trình duyệt.";
-                } else {
-                    micStatus.innerText = "Có lỗi xảy ra, vui lòng sử dụng bàn phím.";
+                if (micStatus) {
+                    if (event.error === 'no-speech') {
+                        micStatus.innerText = "Không nghe thấy giọng nói, bạn thử bấm nói lại nhé.";
+                    } else if (event.error === 'not-allowed') {
+                        micStatus.innerText = "Chưa cấp quyền sử dụng Micro. Vui lòng bật Micro trên trình duyệt.";
+                    } else {
+                        micStatus.innerText = "Có lỗi xảy ra, vui lòng sử dụng bàn phím.";
+                    }
                 }
                 resetMicUI();
             };
 
             recognition.onend = function () {
+                clearTimeout(speechTimeout);
                 resetMicUI();
             };
         }
@@ -900,23 +924,59 @@
             if (!recognition) return;
 
             if (isListening) {
-                recognition.stop();
+                stopSpeechRecognition(true);
             } else {
                 // Xóa input cũ khi bắt đầu nói câu mới
-                document.getElementById('manual-input').value = '';
-                document.getElementById('feedback-area').className = 'feedback';
-                recognition.start();
+                const manualInput = document.getElementById('manual-input');
+                if (manualInput) manualInput.value = '';
+                const feedbackArea = document.getElementById('feedback-area');
+                if (feedbackArea) feedbackArea.className = 'feedback';
+
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.error("Error starting speech recognition:", e);
+                    // Nếu lỗi do recognition đang chạy hoặc dở dang, abort và reset UI
+                    try { recognition.abort(); } catch (err) {}
+                    resetMicUI();
+                }
             }
+        }
+
+        function stopSpeechRecognition(forceAbort = false) {
+            clearTimeout(speechTimeout);
+            if (recognition) {
+                try {
+                    if (forceAbort) {
+                        recognition.abort();
+                    } else {
+                        recognition.stop();
+                    }
+                } catch (e) {
+                    console.error("Error stopping recognition:", e);
+                }
+            }
+            resetMicUI();
         }
 
         function resetMicUI() {
             isListening = false;
+            clearTimeout(speechTimeout);
             const micBtn = document.getElementById('mic-btn');
             const micStatus = document.getElementById('mic-status');
-            micBtn.classList.remove('listening');
-            micBtn.innerHTML = "🎙️";
-            if (micStatus.innerText.includes("Đang lắng nghe")) {
-                micStatus.innerText = "Nhấn vào Micro và đọc từ cần điền";
+            if (micBtn) {
+                micBtn.classList.remove('listening');
+                micBtn.innerHTML = "🎙️";
+                micBtn.style.pointerEvents = 'auto';
+            }
+            if (micStatus && (micStatus.innerText.includes("Đang lắng nghe") || micStatus.innerText.includes("Đã nghe thấy"))) {
+                if (currentRound === 3) {
+                    micStatus.innerText = "⏸️ Video đã dừng! Hãy bấm Micro và đọc nhại theo câu trong video!";
+                } else if (currentRound === 2) {
+                    micStatus.innerText = "✍️ Video đã dừng! Hãy nghe và gõ từ/câu bạn nghe được vào ô bên dưới";
+                } else {
+                    micStatus.innerText = "Nhấn vào Micro và đọc từ cần điền";
+                }
                 micStatus.style.color = "#6b7280";
             }
         }
@@ -992,7 +1052,7 @@
                 hideLoading();
                 switchScreen('game-screen');
 
-                const totalTime = vocabList.length * 60;
+                const totalTime = vocabList.length * 90;
                 startTimer(totalTime);
 
                 loadQuestion();
@@ -1008,6 +1068,8 @@
             }
         }
         function loadQuestion() {
+            stopSpeechRecognition(true);
+
             if (currentIndex >= vocabList.length) {
                 endGame();
                 return;
@@ -1187,12 +1249,17 @@
             // Kiểm tra nếu đã hết danh sách câu hỏi
             if (currentIndex >= vocabList.length) {
                 if (currentRound === 1) {
-                    // Hết Hiệp 1 -> Chuyển sang Hiệp 2
-                    alert("🎉 Tuyệt vời! Bạn đã nắm được cốt truyện. Bây giờ chúng ta bước vào Hiệp 2: Luyện phát âm & Hát theo nhé!");
+                    // Hết Hiệp 1 -> Chuyển sang Hiệp 2 (Nghe chép chính tả)
+                    alert("🎉 Tuyệt vời! Bạn đã nắm được cốt truyện. Bây giờ chúng ta bước vào Hiệp 2: Nghe & Chép chính tả (Dictation)!");
                     transitionToRound2();
                     return;
+                } else if (currentRound === 2) {
+                    // Hết Hiệp 2 -> Chuyển sang Hiệp 3 (Luyện phát âm & Thu âm nhại theo)
+                    alert("👏 Xuất sắc! Bạn đã vượt qua bài thi Chép chính tả. Bây giờ chúng ta bước vào Hiệp 3: Luyện phát âm & Thu âm nhại theo nhé!");
+                    transitionToRound3();
+                    return;
                 } else {
-                    // Hết Hiệp 2 -> Kết thúc game, lưu điểm vào Google Sheets
+                    // Hết Hiệp 3 -> Kết thúc game, lưu điểm vào Google Sheets
                     endGame();
                     return;
                 }
@@ -1211,7 +1278,7 @@
             switchScreen('result-screen');
             document.getElementById('result-student-name').innerText = `Học sinh: ${studentName}`;
 
-            const maxScore = vocabList.length * 20;
+            const maxScore = vocabList.length * 30;
             document.getElementById('final-score').innerText = `${score} / ${maxScore}`;
 
             const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
@@ -1259,7 +1326,7 @@
             statusEl.innerText = "⏳ Đang đồng bộ kết quả về Google Sheets...";
             statusEl.style.color = "#6b7280";
 
-            const maxScore = vocabList.length * 20;
+            const maxScore = vocabList.length * 30;
             const payloadScore = {
                 action: "saveScore",
                 sheetName: currentSheetName,
@@ -1487,6 +1554,21 @@
             if (fallbackInputContainer) fallbackInputContainer.style.display = displayStyle;
         }
 
+        function setDictationInputVisible(visible) {
+            const displayStyle = visible ? 'block' : 'none';
+            const flexStyle = visible ? 'flex' : 'none';
+
+            const hintBox = document.querySelector('.hint-box');
+            const micContainer = document.querySelector('.mic-container');
+            const divider = document.querySelector('.divider');
+            const fallbackInputContainer = document.querySelector('.fallback-input-container');
+
+            if (hintBox) hintBox.style.display = flexStyle;
+            if (micContainer) micContainer.style.display = 'none';
+            if (divider) divider.style.display = 'none';
+            if (fallbackInputContainer) fallbackInputContainer.style.display = displayStyle;
+        }
+
         function setSpeakerBtnVisible(visible) {
             const speakerBtn = document.getElementById('speaker-btn');
             if (speakerBtn) speakerBtn.style.display = visible ? 'inline-flex' : 'none';
@@ -1614,7 +1696,9 @@
                     if (currentRound === 1) {
                         triggerRound1_MultipleChoice();
                     } else if (currentRound === 2) {
-                        triggerRound2_Shadowing();
+                        triggerRound2_Dictation();
+                    } else if (currentRound === 3) {
+                        triggerRound3_Shadowing();
                     }
                 }
             }, 50);
@@ -1782,20 +1866,31 @@
         }
 
         // ============================================================================
-        // LOGIC HIỆP 2: SHADOWING / SPEAKING (PRODUCTIVE SKILL)
+        // ============================================================================
+        // LOGIC HIỆP 2: NGHE CHÉP CHÍNH TẢ (DICTATION / LISTENING & WRITING)
         // ============================================================================
 
-        function triggerRound2_Shadowing() {
+        function triggerRound2_Dictation() {
+            stopSpeechRecognition(true);
             document.getElementById('round1-ui').style.display = 'none';
-            document.getElementById('round2-ui').style.display = 'block';
-            setSpeechAndInputVisible(true); // Hiện khu vực Thu âm/Nói/Gõ phím ở Hiệp 2
-            setSpeakerBtnVisible(true);      // Hiện nút "Nghe lại đoạn video"
+            document.getElementById('round2-ui').style.display = 'none';
+            
+            // Ẩn mic, chỉ hiện ô gõ phím & hint & nút nghe lại
+            setDictationInputVisible(true);
+            setSpeakerBtnVisible(true);
 
-            const micBtn = document.getElementById('mic-btn');
-            const micStatus = document.getElementById('mic-status');
+            const manualInput = document.getElementById('manual-input');
+            if (manualInput) {
+                manualInput.placeholder = "Gõ từ/câu bạn nghe được vào đây và nhấn Enter...";
+                manualInput.disabled = false;
+                manualInput.focus();
+            }
 
-            micStatus.innerText = "⏸️ Video đã dừng! Hãy bấm Micro và đọc nhại theo câu trong video!";
-            micBtn.style.pointerEvents = 'auto';
+            const feedbackArea = document.getElementById('feedback-area');
+            if (feedbackArea) {
+                feedbackArea.className = 'feedback';
+                feedbackArea.innerText = '';
+            }
         }
 
         function transitionToRound2() {
@@ -1804,9 +1899,51 @@
 
             const banner = document.getElementById('round-banner');
             if (banner) {
+                banner.style.background = '#e0f2fe';
+                banner.style.color = '#0369a1';
+                banner.innerHTML = '✍️ Hiệp 2: Nghe & Chép chính tả (Listening & Dictation)';
+            }
+
+            loadQuestion();
+            playVideoSegment(currentIndex);
+        }
+
+        // ============================================================================
+        // LOGIC HIỆP 3: SHADOWING / SPEAKING (PRODUCTIVE SKILL)
+        // ============================================================================
+
+        function triggerRound3_Shadowing() {
+            stopSpeechRecognition(true);
+            document.getElementById('round1-ui').style.display = 'none';
+            document.getElementById('round2-ui').style.display = 'block';
+            setSpeechAndInputVisible(true); // Hiện khu vực Thu âm/Nói/Gõ phím ở Hiệp 3
+            setSpeakerBtnVisible(true);      // Hiện nút "Nghe lại đoạn video"
+
+            const micBtn = document.getElementById('mic-btn');
+            const micStatus = document.getElementById('mic-status');
+            const manualInput = document.getElementById('manual-input');
+
+            if (manualInput) {
+                manualInput.placeholder = "Gõ từ vào đây và nhấn Enter...";
+            }
+
+            if (micStatus) {
+                micStatus.innerText = "⏸️ Video đã dừng! Hãy bấm Micro và đọc nhại theo câu trong video!";
+            }
+            if (micBtn) {
+                micBtn.style.pointerEvents = 'auto';
+            }
+        }
+
+        function transitionToRound3() {
+            currentRound = 3;
+            currentIndex = 0;
+
+            const banner = document.getElementById('round-banner');
+            if (banner) {
                 banner.style.background = '#fef3c7';
                 banner.style.color = '#b45309';
-                banner.innerHTML = '🔥 Hiệp 2: Luyện Thu Âm Phát Âm Nhại Theo (Shadowing & Speaking)';
+                banner.innerHTML = '🔥 Hiệp 3: Luyện Thu Âm Phát Âm Nhại Theo (Shadowing & Speaking)';
             }
 
             loadQuestion();
