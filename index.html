@@ -797,6 +797,7 @@
                     </div>
 
                     <div id="feedback-area" class="feedback"></div>
+                    <div id="answer-review" role="status" style="display: none; margin-top: 12px; padding: 12px 14px; background: #ecfdf5; border: 1px solid #86efac; border-radius: 10px; color: #166534; line-height: 1.5;"></div>
 
                     <button id="next-btn" class="btn btn-primary" style="margin-top: 15px; width: 100%; display: none;"
                         onclick="nextQuestion()">
@@ -876,6 +877,7 @@
         let currentIndex = 0;
         let score = 0;
         let detailedAnswers = [];
+        let answerReviewState = null;
         let isFirstAttempt = true;
         let studentName = "";
         let currentSheetName = "";
@@ -1105,7 +1107,7 @@
                 hideLoading();
                 switchScreen('game-screen');
 
-                const totalTime = vocabList.length * 90;
+                const totalTime = vocabList.length * 180;
                 startTimer(totalTime);
 
                 loadQuestion();
@@ -1176,6 +1178,48 @@
         // ==========================================
         // 1. HÀM KIỂM TRA ĐÁP ÁN (ĐÃ NÂNG CẤP)
         // ==========================================
+        function getExpectedAnswer(vocab) {
+            return isKeywordOnlyMode ? (vocab.word || "") : (vocab.context || vocab.word || "");
+        }
+
+        function replayVideoWithAnswerReview(isCorrect, userAnswer) {
+            const review = document.getElementById('answer-review');
+            const expectedAnswer = getExpectedAnswer(vocabList[currentIndex]);
+            answerReviewState = { isCorrect: isCorrect };
+
+            // Start the replay before displaying the review because playVideoSegment
+            // resets the question UI.
+            playVideoSegment(currentIndex);
+            if (review) {
+                review.innerHTML = `<strong>${isCorrect ? '✓ Chính xác!' : 'Đáp án để đối chiếu:'}</strong><br>${expectedAnswer}<br><small>Bạn trả lời: ${userAnswer}</small>`;
+                review.style.display = 'block';
+            }
+        }
+
+        function restoreAnswerReviewUI() {
+            if (!answerReviewState) return false;
+
+            const isCorrect = answerReviewState.isCorrect;
+            if (currentRound === 2) {
+                setDictationInputVisible(true);
+            } else {
+                setSpeechAndInputVisible(true);
+            }
+            setSpeakerBtnVisible(true);
+
+            const input = document.getElementById('manual-input');
+            const micBtn = document.getElementById('mic-btn');
+            if (input) {
+                input.disabled = isCorrect;
+                if (!isCorrect) input.focus();
+            }
+            if (micBtn) micBtn.style.pointerEvents = isCorrect ? 'none' : 'auto';
+
+            const nextBtn = document.getElementById('next-btn');
+            if (nextBtn) nextBtn.style.display = isCorrect ? 'flex' : 'none';
+            return true;
+        }
+
         function checkAnswer(userAnswer, inputType = 'manual') {
             const currentVocab = vocabList[currentIndex];
             const feedbackArea = document.getElementById('feedback-area');
@@ -1232,7 +1276,9 @@
                     const regex = new RegExp(`(${currentVocab.word})`, 'gi');
                     displayHTML = displayHTML.replace(regex, '<b style="color: var(--success); text-decoration: underline;">$1</b>');
                 }
-                contextBox.innerHTML = displayHTML;
+                // `context-display` is optional in the current game layout. Do not
+                // let its absence stop the rest of the successful-answer flow.
+                if (contextBox) contextBox.innerHTML = displayHTML;
 
                 // Khóa input và mic
                 document.getElementById('manual-input').disabled = true;
@@ -1253,10 +1299,7 @@
 
                 currentQuestionFailCount = 0;
                 currentQuestionWrongSTT = [];
-
-                const nextBtn = document.getElementById('next-btn');
-                nextBtn.style.display = 'flex';
-                nextBtn.focus();
+                replayVideoWithAnswerReview(true, userAnswer);
 
             } else {
                 // SAI
@@ -1280,6 +1323,7 @@
                 const inputEl = document.getElementById('manual-input');
                 inputEl.style.borderColor = "var(--error)";
                 setTimeout(() => { inputEl.style.borderColor = "#e5e7eb"; }, 1000);
+                replayVideoWithAnswerReview(false, userAnswer);
             }
         }
         // Lắng nghe sự kiện Enter khi gõ phím
@@ -1291,8 +1335,18 @@
                 }
             }
         });
+        document.getElementById('manual-input').addEventListener('input', function () {
+            if (answerReviewState && !answerReviewState.isCorrect) {
+                const review = document.getElementById('answer-review');
+                if (review) review.style.display = 'none';
+                answerReviewState = null;
+            }
+        });
 
         function nextQuestion() {
+            answerReviewState = null;
+            const review = document.getElementById('answer-review');
+            if (review) review.style.display = 'none';
             currentIndex++;
 
             // Kiểm tra nếu đã hết danh sách câu hỏi
@@ -1376,34 +1430,30 @@
             statusEl.style.color = "#6b7280";
 
             const maxScore = vocabList.length * 30;
-            const payloadScore = {
-                action: "saveScore",
+            const payload = {
+                action: "saveResults",
                 sheetName: currentSheetName,
                 name: studentName,
                 score: score,
                 total: maxScore,
-                gameType: "Speech Reflex"
-            };
-
-            const payloadDetail = {
-                action: "saveDetailList",
-                sheetName: currentSheetName,
-                name: studentName,
+                gameType: "Speech Reflex",
                 details: detailedAnswers
             };
 
             try {
                 // Sử dụng mode 'no-cors' hoặc POST tiêu chuẩn tùy thuộc vào cách bạn setup DoPost bên GAS
                 // Ở đây dùng fetch POST stringify chuẩn
-                await fetch(WEB_APP_URL, {
+                const response = await fetch(WEB_APP_URL, {
                     method: 'POST',
-                    body: JSON.stringify(payloadScore)
+                    body: JSON.stringify(payload)
                 });
 
-                await fetch(WEB_APP_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(payloadDetail)
-                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const result = await response.json();
+                if (result.status !== 'success') throw new Error(result.message || 'Server failed to save data');
+                if (result.detailsSaved !== detailedAnswers.length) {
+                    throw new Error(`Only saved ${result.detailsSaved || 0}/${detailedAnswers.length} detailed answers`);
+                }
 
                 statusEl.innerText = "✅ Đã lưu điểm và báo cáo chi tiết thành công!";
                 statusEl.style.color = "var(--success)";
@@ -1711,7 +1761,9 @@
                     }
                     stopTimeTracker();
 
-                    if (currentRound === 1) {
+                    if (restoreAnswerReviewUI()) {
+                        return;
+                    } else if (currentRound === 1) {
                         triggerRound1_DragDrop();
                     } else if (currentRound === 2) {
                         triggerRound2_Dictation();

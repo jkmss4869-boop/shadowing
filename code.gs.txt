@@ -73,7 +73,33 @@ function doPost(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     
     // 2. API Lưu điểm tổng
-    if (action === "saveScore") {
+    if (action === "saveResults") {
+      var scoreSheet = ss.getSheetByName("Scores") || ss.insertSheet("Scores");
+      if (scoreSheet.getLastRow() === 0) {
+        scoreSheet.appendRow(["Timestamp", "Student name", "Lesson", "Game Type", "Score", "Total"]);
+      }
+      scoreSheet.appendRow([
+        new Date(), data.name, data.sheetName, data.gameType, data.score, data.total
+      ]);
+
+      var detailSheet = ss.getSheetByName("Details") || ss.insertSheet("Details");
+      if (detailSheet.getLastRow() === 0) {
+        detailSheet.appendRow(["Timestamp", "Student name", "Lesson", "Question", "Target answer", "Student answer", "Correct", "Points", "Wrong speech attempts"]);
+      }
+      var time = new Date();
+      var details = data.details || [];
+      for (var i = 0; i < details.length; i++) {
+        detailSheet.appendRow([
+          time, data.name, data.sheetName, details[i].question, details[i].targetWord,
+          details[i].studentAnswer, details[i].isCorrect ? "Correct" : "Wrong",
+          details[i].points, details[i].wrongAttempts || "None"
+        ]);
+      }
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success", detailsSaved: details.length
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    else if (action === "saveScore") {
       var sheet = ss.getSheetByName("Scores") || ss.insertSheet("Scores");
       // Nếu chưa có header thì tạo header
       if (sheet.getLastRow() === 0) {
