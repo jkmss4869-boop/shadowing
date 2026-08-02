@@ -724,18 +724,24 @@
             <div class="game-split-layout">
                 <!-- BÊN TRÁI: VIDEO & NỘI DUNG CÂU THOẠI -->
                 <div class="left-pane">
-                    <div id="video-container" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; width: 100%; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); background: #000; margin-bottom: 15px;">
-                        <div id="youtube-player" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
-                        <video id="local-player" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; display: none;" controls></video>
+                    <div id="video-container"
+                        style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; width: 100%; border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); background: #000; margin-bottom: 15px;">
+                        <div id="youtube-player"
+                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+                        <video id="local-player"
+                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; display: none;"
+                            controls></video>
                     </div>
 
-                    <div id="round-banner" class="badge" style="background: #e0e7ff; color: #3730a3; display: block; text-align: center; margin-bottom: 15px; font-size: 1rem; padding: 10px; border-radius: 10px; font-weight: bold;">
+                    <div id="round-banner" class="badge"
+                        style="background: #e0e7ff; color: #3730a3; display: block; text-align: center; margin-bottom: 15px; font-size: 1rem; padding: 10px; border-radius: 10px; font-weight: bold;">
                         🎯 Hiệp 1: Nghe & Kéo thả sắp xếp câu tiếng Anh (Sentence Builder)
                     </div>
 
                     <!-- NÚT PHÁT LẠI ĐOẠN VIDEO -->
                     <div style="text-align: center; margin-bottom: 10px;">
-                        <button id="speaker-btn" class="btn-speaker" onclick="replayVideoSegment()" title="Phát lại đoạn video vừa đọc">
+                        <button id="speaker-btn" class="btn-speaker" onclick="replayVideoSegment()"
+                            title="Phát lại đoạn video vừa đọc">
                             🎬 Nghe lại đoạn video
                         </button>
                     </div>
@@ -744,31 +750,42 @@
                 <!-- BÊN PHẢI: GIAO DIỆN CÂU HỎI KÉO THẢ / THU ÂM & CÂU TRẢ LỜI -->
                 <div class="right-pane">
                     <!-- HIỆP 1: KÉO THẢ SẮP XẾP CÂU -->
-                    <div id="round1-ui" style="display: none; background: #f8fafc; padding: 18px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-                        <h3 style="text-align: center; color: #334155; margin-top: 0; margin-bottom: 10px; font-size: 1.05rem;">
+                    <div id="round1-ui"
+                        style="display: none; background: #f8fafc; padding: 18px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                        <h3
+                            style="text-align: center; color: #334155; margin-top: 0; margin-bottom: 10px; font-size: 1.05rem;">
                             🧩 Sắp xếp các từ tiếng Anh thành câu hoàn chỉnh:
                         </h3>
-                        <div id="round1-vi-prompt" style="font-size: 1rem; font-weight: 700; color: #1e293b; text-align: center; margin-bottom: 15px; background: #e0f2fe; padding: 10px 14px; border-radius: 10px; border: 1px solid #bae6fd;">
+                        <div id="round1-vi-prompt"
+                            style="font-size: 1rem; font-weight: 700; color: #1e293b; text-align: center; margin-bottom: 15px; background: #e0f2fe; padding: 10px 14px; border-radius: 10px; border: 1px solid #bae6fd;">
                             🇻🇳 <span id="vi-sentence-display">...</span>
                         </div>
 
                         <!-- KHUNG THẢ NỐI CÂU (ANSWER ZONE) -->
-                        <div style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 6px;">📥 Câu của bạn:</div>
-                        <div id="drag-answer-zone" style="min-height: 60px; padding: 10px; background: #ffffff; border: 2px dashed #94a3b8; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 15px; transition: all 0.2s;">
-                            <span class="drag-placeholder" style="color: #94a3b8; font-style: italic; font-size: 0.9rem; user-select: none; width: 100%; text-align: center;">Chạm hoặc kéo thả các từ bên dưới vào đây...</span>
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 6px;">📥 Câu
+                            của bạn:</div>
+                        <div id="drag-answer-zone"
+                            style="min-height: 60px; padding: 10px; background: #ffffff; border: 2px dashed #94a3b8; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 15px; transition: all 0.2s;">
+                            <span class="drag-placeholder"
+                                style="color: #94a3b8; font-style: italic; font-size: 0.9rem; user-select: none; width: 100%; text-align: center;">Chạm
+                                hoặc kéo thả các từ bên dưới vào đây...</span>
                         </div>
 
                         <!-- KHO TỪ XÁO TRỘN (WORD POOL) -->
-                        <div style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 6px;">🔀 Kho từ xáo trộn:</div>
-                        <div id="drag-pool-zone" style="min-height: 50px; padding: 10px; background: #f1f5f9; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 15px; transition: all 0.2s;">
+                        <div style="font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 6px;">🔀 Kho từ
+                            xáo trộn:</div>
+                        <div id="drag-pool-zone"
+                            style="min-height: 50px; padding: 10px; background: #f1f5f9; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 15px; transition: all 0.2s;">
                         </div>
 
                         <!-- NÚT CHỨC NĂNG: ĐẶT LẠI & KIỂM TRA -->
                         <div style="display: flex; gap: 10px;">
-                            <button id="drag-reset-btn" class="btn" onclick="resetRound1DragDrop()" style="flex: 1; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 10px; font-size: 0.95rem; border-radius: 10px;">
+                            <button id="drag-reset-btn" class="btn" onclick="resetRound1DragDrop()"
+                                style="flex: 1; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 10px; font-size: 0.95rem; border-radius: 10px;">
                                 🔄 Đặt lại
                             </button>
-                            <button id="drag-check-btn" class="btn btn-primary" onclick="checkRound1DragDrop()" style="flex: 2; padding: 10px; font-size: 0.95rem; border-radius: 10px;">
+                            <button id="drag-check-btn" class="btn btn-primary" onclick="checkRound1DragDrop()"
+                                style="flex: 2; padding: 10px; font-size: 0.95rem; border-radius: 10px;">
                                 ✔️ Kiểm tra đáp án
                             </button>
                         </div>
@@ -792,12 +809,14 @@
 
                     <div class="divider">hoặc gõ đáp án nếu không tiện bật mic</div>
                     <div class="fallback-input-container">
-                        <input type="text" id="manual-input" class="form-control" placeholder="Gõ từ vào đây và nhấn Enter..."
-                            autocomplete="off">
+                        <input type="text" id="manual-input" class="form-control"
+                            placeholder="Gõ từ vào đây và nhấn Enter..." autocomplete="off">
                     </div>
 
                     <div id="feedback-area" class="feedback"></div>
-                    <div id="answer-review" role="status" style="display: none; margin-top: 12px; padding: 12px 14px; background: #ecfdf5; border: 1px solid #86efac; border-radius: 10px; color: #166534; line-height: 1.5;"></div>
+                    <div id="answer-review" role="status"
+                        style="display: none; margin-top: 12px; padding: 12px 14px; background: #ecfdf5; border: 1px solid #86efac; border-radius: 10px; color: #166534; line-height: 1.5;">
+                    </div>
 
                     <button id="next-btn" class="btn btn-primary" style="margin-top: 15px; width: 100%; display: none;"
                         onclick="nextQuestion()">
@@ -815,7 +834,8 @@
                 <div class="score-card">
                     <div class="total-score" id="final-score">0 / 0</div>
                     <div id="final-rating" class="rating-badge rating-excellent">🌟 Xuất sắc</div>
-                    <p id="rating-desc" style="font-weight: 600; color: #6b7280; margin-top: 10px; font-size: 0.95rem;">Tổng điểm phản xạ của bạn</p>
+                    <p id="rating-desc" style="font-weight: 600; color: #6b7280; margin-top: 10px; font-size: 0.95rem;">
+                        Tổng điểm phản xạ của bạn</p>
                 </div>
 
                 <div class="table-responsive">
@@ -885,7 +905,7 @@
         let rawVocabListFromSheets = [];
         let player;                 // Đối tượng YouTube Player
         let timeTracker = null;     // Biến lưu vòng lặp theo dõi thời gian
-        let currentRound = 1;   
+        let currentRound = 1;
         let isVideoPaused = false;
 
         // Web Speech API Variables
@@ -992,7 +1012,7 @@
                 } catch (e) {
                     console.error("Error starting speech recognition:", e);
                     // Nếu lỗi do recognition đang chạy hoặc dở dang, abort và reset UI
-                    try { recognition.abort(); } catch (err) {}
+                    try { recognition.abort(); } catch (err) { }
                     resetMicUI();
                 }
             }
@@ -1260,7 +1280,16 @@
                 new Audio('confetti.mp3').play().catch(e => console.log("Lỗi phát âm thanh:", e));
 
                 if (typeof confetti === 'function') {
-                    confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { x: 0, y: 0.6 }
+                    });
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { x: 1, y: 0.6 }
+                    });
                 }
 
                 const earnedScore = isFirstAttempt ? 10 : 5;
@@ -1794,7 +1823,7 @@
 
             if (videoInfo.type === 'local') {
                 if (player && typeof player.pauseVideo === 'function') {
-                    try { player.pauseVideo(); } catch (e) {}
+                    try { player.pauseVideo(); } catch (e) { }
                 }
                 if (ytContainer) ytContainer.style.display = 'none';
 
@@ -2066,7 +2095,16 @@
                 // Đúng!
                 new Audio('confetti.mp3').play().catch(e => console.log("Audio play err:", e));
                 if (typeof confetti === 'function') {
-                    confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { x: 0, y: 0.6 }
+                    });
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { x: 1, y: 0.6 }
+                    });
                 }
 
                 if (feedback) {
@@ -2111,7 +2149,7 @@
             stopSpeechRecognition(true);
             document.getElementById('round1-ui').style.display = 'none';
             document.getElementById('round2-ui').style.display = 'none';
-            
+
             // Ẩn mic, chỉ hiện ô gõ phím & hint & nút nghe lại
             setDictationInputVisible(true);
             setSpeakerBtnVisible(true);
