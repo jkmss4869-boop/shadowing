@@ -64,6 +64,41 @@ function doGet(e) {
     return ContentService.createTextOutput(JSON.stringify(vocabList))
       .setMimeType(ContentService.MimeType.JSON);
   }
+
+  // API câu hỏi Nghe hiểu. Dòng 1 là tiêu đề, các cột lần lượt là:
+  // A: câu hỏi | B: đáp án đúng | C-F: 4 phương án trả lời.
+  if (action === "getListeningComprehension") {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(sheetName);
+
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify([]))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var data = sheet.getDataRange().getDisplayValues();
+    var questions = [];
+
+    for (var i = 1; i < data.length; i++) {
+      var question = String(data[i][0] || "").trim();
+      var correctAnswer = String(data[i][1] || "").trim();
+      var options = [data[i][2], data[i][3], data[i][4], data[i][5]]
+        .map(function (option) { return String(option || "").trim(); })
+        .filter(function (option) { return option !== ""; });
+
+      // Bỏ qua dòng trống hoặc dòng chưa nhập đủ dữ liệu câu hỏi.
+      if (question && correctAnswer && options.length >= 2) {
+        questions.push({
+          question: question,
+          correctAnswer: correctAnswer,
+          options: options
+        });
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify(questions))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 function doPost(e) {

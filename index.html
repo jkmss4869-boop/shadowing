@@ -622,6 +622,20 @@
             font-weight: 800 !important;
             border-color: #ef4444 !important;
         }
+
+        .mode-picker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 22px 0; }
+        .mode-card { border: 2px solid #ddd6fe; border-radius: 16px; padding: 18px; background: #fff; cursor: pointer; text-align: left; transition: .2s; }
+        .mode-card:hover, .mode-card.selected { border-color: var(--primary); background: #f5f3ff; box-shadow: 0 4px 14px rgba(139, 92, 246, .18); }
+        .mode-card strong { display: block; color: var(--primary-dark); font-size: 1.1rem; margin-bottom: 5px; }
+        .mode-card span { color: #64748b; font-size: .9rem; line-height: 1.4; }
+        .quiz-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; }
+        .quiz-question { color: #1e293b; font-size: 1.12rem; font-weight: 700; margin-bottom: 16px; line-height: 1.5; }
+        .quiz-options { display: grid; gap: 10px; }
+        .quiz-option { width: 100%; background: #fff; border: 2px solid #dbeafe; color: #334155; padding: 12px 14px; border-radius: 12px; text-align: left; font: inherit; font-weight: 600; cursor: pointer; }
+        .quiz-option:hover:not(:disabled) { border-color: #60a5fa; background: #eff6ff; }
+        .quiz-option.correct { border-color: #10b981; background: #ecfdf5; color: #166534; }
+        .quiz-option.wrong { border-color: #ef4444; background: #fef2f2; color: #b91c1c; }
+        @media (max-width: 600px) { .mode-picker { grid-template-columns: 1fr; } }
     </style>
 </head>
 
@@ -705,8 +719,25 @@
                     value="Unit1">
             </div>
 
+            <div class="form-group" id="comprehension-sheet-group" style="display: none;">
+                <label for="comprehension-sheet-name">Sheet câu hỏi Nghe hiểu:</label>
+                <input type="text" id="comprehension-sheet-name" class="form-control" placeholder="Ví dụ: unite (để trống nếu dùng chung sheet bài học)">
+                <small style="display:block; margin-top:6px; color:#64748b;">Cột A: câu hỏi · B: đáp án đúng · C-F: các lựa chọn.</small>
+            </div>
+
+            <div class="mode-picker" aria-label="Chọn chế độ chơi">
+                <button type="button" class="mode-card" id="mode-comprehension" onclick="selectGameMode('comprehension')">
+                    <strong>🎧 Nghe hiểu</strong>
+                    <span>Xem video đầy đủ và trả lời các câu hỏi trắc nghiệm.</span>
+                </button>
+                <button type="button" class="mode-card" id="mode-detail" onclick="selectGameMode('detail')">
+                    <strong>🔍 Nghe chi tiết</strong>
+                    <span>Chơi đủ 3 hiệp: xếp câu, chép chính tả và shadowing.</span>
+                </button>
+            </div>
+
             <button class="btn btn-primary" onclick="startGame()">
-                <span>Bắt đầu luyện tập</span> 🚀
+                <span>Bắt đầu chơi</span> 🚀
             </button>
         </div>
 
@@ -749,6 +780,12 @@
 
                 <!-- BÊN PHẢI: GIAO DIỆN CÂU HỎI KÉO THẢ / THU ÂM & CÂU TRẢ LỜI -->
                 <div class="right-pane">
+                    <div id="comprehension-ui" class="quiz-card" style="display: none;">
+                        <div id="comprehension-question" class="quiz-question"></div>
+                        <div id="comprehension-options" class="quiz-options"></div>
+                        <div id="comprehension-feedback" class="feedback"></div>
+                        <button id="comprehension-next-btn" class="btn btn-primary" style="display:none; margin-top:15px;" onclick="nextComprehensionQuestion()">Câu tiếp theo ➔</button>
+                    </div>
                     <!-- HIỆP 1: KÉO THẢ SẮP XẾP CÂU -->
                     <div id="round1-ui"
                         style="display: none; background: #f8fafc; padding: 18px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
@@ -907,6 +944,9 @@
         let timeTracker = null;     // Biến lưu vòng lặp theo dõi thời gian
         let currentRound = 1;
         let isVideoPaused = false;
+        let gameMode = null;
+        let comprehensionQuestions = [];
+        let comprehensionIndex = 0;
 
         // Web Speech API Variables
         let recognition = null;
@@ -1089,19 +1129,29 @@
             return array;
         }
 
+        function selectGameMode(mode) {
+            gameMode = mode;
+            document.getElementById('mode-comprehension').classList.toggle('selected', mode === 'comprehension');
+            document.getElementById('mode-detail').classList.toggle('selected', mode === 'detail');
+            document.getElementById('comprehension-sheet-group').style.display = mode === 'comprehension' ? 'block' : 'none';
+        }
+
+        function getMaxScore() {
+            return gameMode === 'comprehension' ? comprehensionQuestions.length * 10 : vocabList.length * 30;
+        }
+
         async function startGame() {
             studentName = document.getElementById('student-name').value.trim();
             currentSheetName = document.getElementById('sheet-name').value.trim();
 
-            if (!studentName || !currentSheetName) {
-                alert("Vui lòng nhập đầy đủ Tên của bạn và Tên bài học (Sheet Name)!");
+            if (!studentName || !currentSheetName || !gameMode) {
+                alert("Vui lòng nhập tên, tên bài học và chọn một chế độ chơi!");
                 return;
             }
 
-            showLoading("Đang tải danh sách video & từ vựng từ Google Sheets...");
+            showLoading(gameMode === 'comprehension' ? "Đang tải video và câu hỏi Nghe hiểu..." : "Đang tải danh sách video & từ vựng từ Google Sheets...");
 
             try {
-                // 1. SỬA ACTION: Đổi thành getVideoVocab để tải 6 cột dữ liệu Video
                 const response = await fetch(`${WEB_APP_URL}?action=getVideoVocab&sheetName=${currentSheetName}`);
                 const data = await response.json();
 
@@ -1111,30 +1161,42 @@
                     return;
                 }
 
-                // Cất bản gốc vào két sắt
                 rawVocabListFromSheets = [...data];
-
-                // Chuẩn bị danh sách (Xáo trộn hoặc Theo thứ tự)
-                // Lưu ý: Mình thống nhất dùng tên biến vocabList theo đúng習慣 code của bạn nhé!
                 vocabList = prepareVocabList(rawVocabListFromSheets);
 
                 currentIndex = 0;
                 score = 0;
                 detailedAnswers = [];
-                currentRound = 1; // 2. ĐƯA VÀO TRONG TRY: Luôn thiết lập Hiệp 1 khi vừa tải xong dữ liệu
+                currentRound = 1;
 
-                initSpeechRecognition();
+                if (gameMode === 'comprehension') {
+                    const questionSheetName = document.getElementById('comprehension-sheet-name').value.trim() || currentSheetName;
+                    const questionResponse = await fetch(`${WEB_APP_URL}?action=getListeningComprehension&sheetName=${encodeURIComponent(questionSheetName)}`);
+                    comprehensionQuestions = await questionResponse.json();
+                    if (!comprehensionQuestions || comprehensionQuestions.length === 0) {
+                        alert("Không tìm thấy câu hỏi Nghe hiểu trong Sheet: " + questionSheetName);
+                        hideLoading();
+                        return;
+                    }
+                    comprehensionIndex = 0;
+                } else {
+                    initSpeechRecognition();
+                }
+
                 hideLoading();
                 switchScreen('game-screen');
 
-                const totalTime = vocabList.length * 180;
+                const totalTime = gameMode === 'comprehension' ? comprehensionQuestions.length * 120 : vocabList.length * 180;
                 startTimer(totalTime);
-
-                loadQuestion();
-
-                // 3. GỌI YOUTUBE API: Bắt đầu dựng khung phát video (hoặc chạy video local)
                 loadYouTubeAPI();
-                playVideoSegment(currentIndex);
+
+                if (gameMode === 'comprehension') {
+                    setupComprehensionGame();
+                    playComprehensionVideo();
+                } else {
+                    loadQuestion();
+                    playVideoSegment(currentIndex);
+                }
 
             } catch (error) {
                 console.error("Lỗi tải dữ liệu video:", error);
@@ -1142,6 +1204,104 @@
                 hideLoading();
             }
         }
+
+        function setupComprehensionGame() {
+            document.getElementById('round-banner').innerHTML = '🎧 Nghe hiểu: Xem video và chọn đáp án đúng';
+            document.getElementById('round-banner').style.background = '#dcfce7';
+            document.getElementById('round-banner').style.color = '#166534';
+            document.getElementById('round1-ui').style.display = 'none';
+            document.getElementById('round2-ui').style.display = 'none';
+            document.getElementById('comprehension-ui').style.display = 'block';
+            document.getElementById('next-btn').style.display = 'none';
+            setSpeechAndInputVisible(false);
+            setSpeakerBtnVisible(false);
+            loadComprehensionQuestion();
+        }
+
+        function loadComprehensionQuestion() {
+            const item = comprehensionQuestions[comprehensionIndex];
+            if (!item) { endGame(); return; }
+
+            document.getElementById('question-counter').innerText = `Câu: ${comprehensionIndex + 1}/${comprehensionQuestions.length}`;
+            document.getElementById('current-score').innerText = score;
+            document.getElementById('comprehension-question').innerText = item.question;
+            const optionBox = document.getElementById('comprehension-options');
+            optionBox.innerHTML = '';
+            const feedback = document.getElementById('comprehension-feedback');
+            feedback.className = 'feedback';
+            feedback.innerText = '';
+            document.getElementById('comprehension-next-btn').style.display = 'none';
+
+            shuffleArray([...item.options]).forEach(option => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'quiz-option';
+                button.innerText = option;
+                button.onclick = () => checkComprehensionAnswer(option);
+                optionBox.appendChild(button);
+            });
+        }
+
+        function checkComprehensionAnswer(answer) {
+            const item = comprehensionQuestions[comprehensionIndex];
+            const isCorrect = String(answer).trim().toLocaleLowerCase() === String(item.correctAnswer).trim().toLocaleLowerCase();
+            const options = document.querySelectorAll('#comprehension-options .quiz-option');
+            options.forEach(button => {
+                button.disabled = true;
+                if (button.innerText.trim().toLocaleLowerCase() === String(item.correctAnswer).trim().toLocaleLowerCase()) button.classList.add('correct');
+                if (button.innerText === answer && !isCorrect) button.classList.add('wrong');
+            });
+
+            const feedback = document.getElementById('comprehension-feedback');
+            const points = isCorrect ? 10 : 0;
+            if (isCorrect) {
+                score += points;
+                document.getElementById('current-score').innerText = score;
+                feedback.className = 'feedback success';
+                feedback.innerText = '🎉 Chính xác!';
+                new Audio('correct.mp3').play().catch(() => {});
+            } else {
+                feedback.className = 'feedback error';
+                feedback.innerText = `❌ Chưa đúng. Đáp án đúng là: ${item.correctAnswer}`;
+            }
+
+            detailedAnswers.push({
+                question: item.question,
+                targetWord: item.correctAnswer,
+                studentAnswer: answer,
+                isCorrect: isCorrect,
+                points: points,
+                wrongAttempts: 'Không có'
+            });
+            const nextBtn = document.getElementById('comprehension-next-btn');
+            nextBtn.innerText = comprehensionIndex === comprehensionQuestions.length - 1 ? 'Xem kết quả ➔' : 'Câu tiếp theo ➔';
+            nextBtn.style.display = 'flex';
+        }
+
+        function nextComprehensionQuestion() {
+            comprehensionIndex++;
+            loadComprehensionQuestion();
+        }
+
+        // Nghe hiểu dùng cả video, không cắt theo mốc start/stop như 3 hiệp Nghe chi tiết.
+        function playComprehensionVideo() {
+            const videoInfo = extractVideoInfo(vocabList[0] && vocabList[0].videoId);
+            const ytContainer = document.getElementById('youtube-player');
+            const localPlayer = document.getElementById('local-player');
+            if (videoInfo.type === 'local') {
+                if (ytContainer) ytContainer.style.display = 'none';
+                if (localPlayer) {
+                    localPlayer.style.display = 'block';
+                    localPlayer.src = videoInfo.src;
+                    localPlayer.currentTime = 0;
+                }
+            } else if (player && typeof player.loadVideoById === 'function') {
+                if (localPlayer) { localPlayer.pause(); localPlayer.style.display = 'none'; }
+                if (ytContainer) ytContainer.style.display = 'block';
+                player.loadVideoById({ videoId: videoInfo.id, startSeconds: 0 });
+            }
+        }
+
         function loadQuestion() {
             stopSpeechRecognition(true);
 
@@ -1410,7 +1570,7 @@
             switchScreen('result-screen');
             document.getElementById('result-student-name').innerText = `Học sinh: ${studentName}`;
 
-            const maxScore = vocabList.length * 30;
+            const maxScore = getMaxScore();
             document.getElementById('final-score').innerText = `${score} / ${maxScore}`;
 
             const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0;
@@ -1458,14 +1618,14 @@
             statusEl.innerText = "⏳ Đang đồng bộ kết quả về Google Sheets...";
             statusEl.style.color = "#6b7280";
 
-            const maxScore = vocabList.length * 30;
+            const maxScore = getMaxScore();
             const payload = {
                 action: "saveResults",
                 sheetName: currentSheetName,
                 name: studentName,
                 score: score,
                 total: maxScore,
-                gameType: "Speech Reflex",
+                gameType: gameMode === 'comprehension' ? "Listening Comprehension" : "Speech Reflex",
                 details: detailedAnswers
             };
 
@@ -1731,6 +1891,10 @@
 
         function onPlayerReady(event) {
             console.log("Player đã sẵn sàng!");
+            if (gameMode === 'comprehension') {
+                playComprehensionVideo();
+                return;
+            }
             const segment = vocabList[currentIndex];
             if (segment) {
                 const videoInfo = extractVideoInfo(segment.videoId);
@@ -1761,6 +1925,7 @@
 
         // 2. VÒNG LẶP CANH GIỜ SIÊU NHANH
         function startTimeTracker() {
+            if (gameMode === 'comprehension') return;
             stopTimeTracker();
 
             timeTracker = setInterval(() => {
