@@ -1831,15 +1831,17 @@
             if (speakerBtn) speakerBtn.style.display = visible ? 'inline-flex' : 'none';
         }
 
-        // 0. Phân loại video ID: YouTube hay File Local (.mp4, .webm, ...)
+        // 0. Phân loại ID: YouTube hoặc tệp local (video/audio như .mp4, .webm, .mp3, ...)
         function extractVideoInfo(input) {
             if (!input) return { type: 'none', id: '' };
             input = input.trim();
 
-            const hasVideoExt = /\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i.test(input);
+            // Thẻ <video> của trình duyệt cũng phát được audio MP3; giữ nguyên player
+            // để bộ canh mốc start/stop hoạt động giống hệt video.
+            const hasLocalMediaExt = /\.(mp4|webm|ogg|mov|m4v|mp3)(\?.*)?$/i.test(input);
             const isPath = input.includes('/') || input.includes('\\');
 
-            if (hasVideoExt || (isPath && !input.includes('youtube.com') && !input.includes('youtu.be'))) {
+            if (hasLocalMediaExt || (isPath && !input.includes('youtube.com') && !input.includes('youtu.be'))) {
                 return { type: 'local', src: input };
             }
 
