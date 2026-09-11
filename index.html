@@ -1202,10 +1202,21 @@
                         currentAudioBase64 = reader.result.split(',')[1];
                         if (detailedAnswers.length > 0) {
                             const lastAns = detailedAnswers[detailedAnswers.length - 1];
-                            // Cập nhật audio cho câu trả lời gần nhất
-                            lastAns.audioBase64 = currentAudioBase64;
-                            lastAns.mimeType = 'audio/webm';
-                            saveSessionToLocalStorage();
+                            const currentVocab = vocabList[currentIndex];
+                            
+                            // Chỉ cập nhật audio nếu câu trả lời cuối cùng thực sự là của câu hỏi hiện tại
+                            if (currentVocab && (lastAns.question === currentVocab.context || lastAns.targetWord === (isKeywordOnlyMode ? currentVocab.word : (currentVocab.context || currentVocab.word)))) {
+                                const cleanStudentName = (studentName || "Student").replace(/[^a-zA-Z0-9]/g, "_");
+                                const cleanWord = (lastAns.targetWord || "Word").replace(/[^a-zA-Z0-9]/g, "_");
+                                const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+                                const fileName = `${cleanStudentName}_${currentSheetName}_${cleanWord}_${timestamp}.webm`;
+
+                                lastAns.audioBase64 = currentAudioBase64;
+                                lastAns.mimeType = 'audio/webm';
+                                lastAns.audioFileName = fileName;
+                                lastAns.folderId = "1Eft9gMET-986DUu0M0EWRWuAKCySXR_n";
+                                saveSessionToLocalStorage();
+                            }
                         }
                     };
                     stream.getTracks().forEach(track => track.stop());
@@ -1836,19 +1847,15 @@
             try {
                 // Sử dụng mode 'no-cors' hoặc POST tiêu chuẩn tùy thuộc vào cách bạn setup DoPost bên GAS
                 // Ở đây dùng fetch POST stringify chuẩn
-                const response = await fetch(WEB_APP_URL, {
+                await fetch(WEB_APP_URL, {
                     method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                const result = await response.json();
-                if (result.status !== 'success') throw new Error(result.message || 'Server failed to save data');
-                if (result.detailsSaved !== detailedAnswers.length) {
-                    throw new Error(`Only saved ${result.detailsSaved || 0}/${detailedAnswers.length} detailed answers`);
-                }
-
-                statusEl.innerText = "✅ Đã lưu điểm và báo cáo chi tiết thành công!";
+                // Do mode 'no-cors', ta không thể đọc response (opaque) nên cứ báo thành công nếu fetch không throw Error (ví dụ đứt mạng)
+                statusEl.innerText = "✅ Đã gửi điểm và bản ghi âm về hệ thống!";
                 statusEl.style.color = "var(--success)";
             } catch (error) {
                 console.error("Lỗi khi lưu điểm:", error);
