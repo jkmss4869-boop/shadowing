@@ -971,6 +971,12 @@
         let isListening = false;
         let speechTimeout = null;
 
+        // Audio Recording Variables (Hiệp 3 Shadowing)
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let currentAudioBase64 = null;
+        let currentAudioUrl = null;
+
         // ==========================================
         // 2. SESSION PERSISTENCE (tiếp tục bài khi rớt mạng / F5)
         // ==========================================
@@ -1176,6 +1182,54 @@
             };
         }
 
+        async function startAudioRecording() {
+            if (currentRound !== 3) return;
+            try {
+                currentAudioBase64 = null;
+                currentAudioUrl = null;
+                audioChunks = [];
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    currentAudioUrl = URL.createObjectURL(audioBlob);
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = () => {
+                        currentAudioBase64 = reader.result.split(',')[1];
+                        if (detailedAnswers.length > 0) {
+                            const lastAns = detailedAnswers[detailedAnswers.length - 1];
+                            // Cập nhật audio cho câu trả lời gần nhất
+                            lastAns.audioBase64 = currentAudioBase64;
+                            lastAns.mimeType = 'audio/webm';
+                            saveSessionToLocalStorage();
+                        }
+                    };
+                    stream.getTracks().forEach(track => track.stop());
+
+                    // Thêm nút nghe lại vào phần answer-review nếu nó đang hiển thị
+                    const review = document.getElementById('answer-review');
+                    if (review && review.style.display === 'block') {
+                        if (!review.innerHTML.includes('Nghe lại bản ghi âm')) {
+                            review.innerHTML += `<br><button onclick="new Audio('${currentAudioUrl}').play()" style="margin-top:10px; padding:8px 12px; background:#10b981; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">▶️ Nghe lại bản ghi âm của bạn</button>`;
+                        }
+                    }
+                };
+                mediaRecorder.start();
+            } catch (e) {
+                console.error('Lỗi khởi tạo thu âm:', e);
+            }
+        }
+
+        function stopAudioRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+        }
+
         function toggleSpeechRecognition() {
             if (!recognition) initSpeechRecognition();
             if (!recognition) return;
@@ -1191,10 +1245,11 @@
 
                 try {
                     recognition.start();
+                    startAudioRecording(); // Bắt đầu thu âm (nếu đang ở Hiệp 3)
                 } catch (e) {
                     console.error("Error starting speech recognition:", e);
                     // Nếu lỗi do recognition đang chạy hoặc dở dang, abort và reset UI
-                    try { recognition.abort(); } catch (err) { }
+                    try { recognition.abort(); stopAudioRecording(); } catch (err) { }
                     resetMicUI();
                 }
             }
@@ -1202,6 +1257,7 @@
 
         function stopSpeechRecognition(forceAbort = false) {
             clearTimeout(speechTimeout);
+            stopAudioRecording(); // Dừng thu âm MediaRecorder
             if (recognition) {
                 try {
                     if (forceAbort) {
@@ -1219,6 +1275,7 @@
         function resetMicUI() {
             isListening = false;
             clearTimeout(speechTimeout);
+            stopAudioRecording(); // Đảm bảo dừng MediaRecorder
             const micBtn = document.getElementById('mic-btn');
             const micStatus = document.getElementById('mic-status');
             if (micBtn) {
