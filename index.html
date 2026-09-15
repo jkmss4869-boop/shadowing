@@ -1828,10 +1828,57 @@
             await saveResultsToGAS();
         }
 
+        async function uploadAudioToDrive(audioBase64, fileName, folderId, mimeType) {
+            try {
+                const resp = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        action: 'saveRecording',
+                        audioBase64: audioBase64,
+                        fileName: fileName,
+                        folderId: folderId,
+                        mimeType: mimeType || 'audio/webm'
+                    })
+                });
+                const json = await resp.json();
+                return json.fileUrl || null;
+            } catch (e) {
+                console.error('Lỗi upload audio:', e);
+                return null;
+            }
+        }
+
         async function saveResultsToGAS() {
             const statusEl = document.getElementById('save-status');
-            statusEl.innerText = "⏳ Đang đồng bộ kết quả về Google Sheets...";
+            statusEl.innerText = "⏳ Đang tải bản ghi âm lên Drive...";
             statusEl.style.color = "#6b7280";
+
+            // Upload từng audio có trong detailedAnswers lên Drive
+            const answersWithAudio = detailedAnswers.filter(a => a.audioBase64);
+            if (answersWithAudio.length > 0) {
+                statusEl.innerText = `⏳ Đang upload ${answersWithAudio.length} bản ghi âm lên Drive...`;
+                for (let i = 0; i < answersWithAudio.length; i++) {
+                    const ans = answersWithAudio[i];
+                    statusEl.innerText = `⏳ Đang upload bản ghi âm ${i + 1}/${answersWithAudio.length}...`;
+                    const fileUrl = await uploadAudioToDrive(
+                        ans.audioBase64,
+                        ans.audioFileName,
+                        ans.folderId,
+                        ans.mimeType
+                    );
+                    if (fileUrl) {
+                        ans.recordingUrl = fileUrl;
+                    }
+                    // Xóa base64 khỏi payload để giảm kích thước khi gửi saveResults
+                    delete ans.audioBase64;
+                    delete ans.mimeType;
+                    delete ans.audioFileName;
+                    delete ans.folderId;
+                }
+            }
+
+            statusEl.innerText = "⏳ Đang lưu điểm về Google Sheets...";
 
             const maxScore = getMaxScore();
             const payload = {
@@ -1845,8 +1892,6 @@
             };
 
             try {
-                // Sử dụng mode 'no-cors' hoặc POST tiêu chuẩn tùy thuộc vào cách bạn setup DoPost bên GAS
-                // Ở đây dùng fetch POST stringify chuẩn
                 await fetch(WEB_APP_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -1854,8 +1899,9 @@
                     body: JSON.stringify(payload)
                 });
 
-                // Do mode 'no-cors', ta không thể đọc response (opaque) nên cứ báo thành công nếu fetch không throw Error (ví dụ đứt mạng)
-                statusEl.innerText = "✅ Đã gửi điểm và bản ghi âm về hệ thống!";
+                statusEl.innerText = answersWithAudio.length > 0
+                    ? `✅ Đã gửi điểm & ${answersWithAudio.length} bản ghi âm về hệ thống!`
+                    : "✅ Đã gửi điểm về hệ thống!";
                 statusEl.style.color = "var(--success)";
             } catch (error) {
                 console.error("Lỗi khi lưu điểm:", error);

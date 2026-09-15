@@ -119,7 +119,7 @@ function doPost(e) {
 
       var detailSheet = ss.getSheetByName("Details") || ss.insertSheet("Details");
       if (detailSheet.getLastRow() === 0) {
-        detailSheet.appendRow(["Timestamp", "Student name", "Lesson", "Question", "Target answer", "Student answer", "Correct", "Points", "Wrong speech attempts"]);
+        detailSheet.appendRow(["Timestamp", "Student name", "Lesson", "Question", "Target answer", "Student answer", "Correct", "Points", "Wrong speech attempts", "recorders"]);
       }
       var time = new Date();
       var details = data.details || [];
@@ -127,11 +127,39 @@ function doPost(e) {
         detailSheet.appendRow([
           time, data.name, data.sheetName, details[i].question, details[i].targetWord,
           details[i].studentAnswer, details[i].isCorrect ? "Correct" : "Wrong",
-          details[i].points, details[i].wrongAttempts || "None"
+          details[i].points, details[i].wrongAttempts || "None",
+          details[i].recordingUrl || ""
         ]);
       }
       return ContentService.createTextOutput(JSON.stringify({
         status: "success", detailsSaved: details.length
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    // API Upload bản ghi âm lên Google Drive
+    else if (action === "saveRecording") {
+      var base64Data = data.audioBase64;
+      var fileName = data.fileName || ("recording_" + new Date().getTime() + ".webm");
+      var folderId = data.folderId || "";
+      var mimeType = data.mimeType || "audio/webm";
+
+      var decodedBytes = Utilities.base64Decode(base64Data);
+      var blob = Utilities.newBlob(decodedBytes, mimeType, fileName);
+
+      var folder;
+      try {
+        folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
+      } catch (folderErr) {
+        folder = DriveApp.getRootFolder();
+      }
+
+      var file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      var fileUrl = "https://drive.google.com/file/d/" + file.getId() + "/view";
+
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "success",
+        fileId: file.getId(),
+        fileUrl: fileUrl
       })).setMimeType(ContentService.MimeType.JSON);
     }
     else if (action === "saveScore") {
