@@ -1856,6 +1856,7 @@
 
             // Upload từng audio có trong detailedAnswers lên Drive
             const answersWithAudio = detailedAnswers.filter(a => a.audioBase64);
+            let uploadedCount = 0;
             if (answersWithAudio.length > 0) {
                 statusEl.innerText = `⏳ Đang upload ${answersWithAudio.length} bản ghi âm lên Drive...`;
                 for (let i = 0; i < answersWithAudio.length; i++) {
@@ -1869,6 +1870,10 @@
                     );
                     if (fileUrl) {
                         ans.recordingUrl = fileUrl;
+                        uploadedCount++;
+                        console.log(`✅ Upload thành công [${i+1}]: ${fileUrl}`);
+                    } else {
+                        console.warn(`❌ Upload thất bại [${i+1}]: ${ans.audioFileName} — Kiểm tra Apps Script đã redeploy chưa?`);
                     }
                     // Xóa base64 khỏi payload để giảm kích thước khi gửi saveResults
                     delete ans.audioBase64;
@@ -1899,9 +1904,11 @@
                     body: JSON.stringify(payload)
                 });
 
-                statusEl.innerText = answersWithAudio.length > 0
-                    ? `✅ Đã gửi điểm & ${answersWithAudio.length} bản ghi âm về hệ thống!`
-                    : "✅ Đã gửi điểm về hệ thống!";
+                statusEl.innerText = uploadedCount > 0
+                    ? `✅ Đã gửi điểm & ${uploadedCount}/${answersWithAudio.length} bản ghi âm về hệ thống!`
+                    : answersWithAudio.length > 0
+                        ? "✅ Đã gửi điểm! ⚠️ Bản ghi âm upload thất bại — xem Console (F12) để biết lý do."
+                        : "✅ Đã gửi điểm về hệ thống!";
                 statusEl.style.color = "var(--success)";
             } catch (error) {
                 console.error("Lỗi khi lưu điểm:", error);
