@@ -119,7 +119,9 @@ function doPost(e) {
 
       var detailSheet = ss.getSheetByName("Details") || ss.insertSheet("Details");
       if (detailSheet.getLastRow() === 0) {
-        detailSheet.appendRow(["Timestamp", "Student name", "Lesson", "Question", "Target answer", "Student answer", "Correct", "Points", "Wrong speech attempts", "recorders"]);
+        detailSheet.appendRow(["Timestamp", "Student name", "Lesson", "Question", "Target answer", "Student answer", "Correct", "Points", "Wrong speech attempts", "recorders", "Round"]);
+      } else if (detailSheet.getLastColumn() < 11) {
+        detailSheet.getRange(1, 11).setValue("Round");
       }
       var time = new Date();
       var details = data.details || [];
@@ -128,7 +130,7 @@ function doPost(e) {
           time, data.name, data.sheetName, details[i].question, details[i].targetWord,
           details[i].studentAnswer, details[i].isCorrect ? "Correct" : "Wrong",
           details[i].points, details[i].wrongAttempts || "None",
-          details[i].recordingUrl || ""
+          details[i].recordingUrl || "", details[i].round ? "Round " + details[i].round : ""
         ]);
       }
       return ContentService.createTextOutput(JSON.stringify({

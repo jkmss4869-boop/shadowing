@@ -1575,6 +1575,19 @@
             return isKeywordOnlyMode ? (vocab.word || "") : (vocab.context || vocab.word || "");
         }
 
+        function recordDetailedAttempt(question, targetAnswer, studentAnswer, isCorrect, points, round) {
+            detailedAnswers.push({
+                question: question || targetAnswer || "",
+                targetWord: targetAnswer || "",
+                studentAnswer: studentAnswer || "",
+                isCorrect: !!isCorrect,
+                points: points || 0,
+                wrongAttempts: isCorrect ? "Không có" : `Hiệp ${round}: trả lời sai`,
+                round: round
+            });
+            saveSessionToLocalStorage();
+        }
+
         function replayVideoWithAnswerReview(isCorrect, userAnswer) {
             const review = document.getElementById('answer-review');
             const expectedAnswer = getExpectedAnswer(vocabList[currentIndex]);
@@ -1696,7 +1709,8 @@
                     studentAnswer: userAnswer + (inputType === 'speech' ? " 🎙️" : " ✍️"),
                     isCorrect: true,
                     points: earnedScore,
-                    wrongAttempts: currentQuestionWrongSTT.length > 0 ? currentQuestionWrongSTT.join(" | ") : "Không có"
+                    wrongAttempts: currentQuestionWrongSTT.length > 0 ? currentQuestionWrongSTT.join(" | ") : "Không có",
+                    round: currentRound
                 });
                 saveSessionToLocalStorage(); // Lưu tiến trình ngay sau khi trả lời đúng
 
@@ -1707,6 +1721,16 @@
             } else {
                 // SAI
                 isFirstAttempt = false;
+                if (currentRound === 2) {
+                    recordDetailedAttempt(
+                        currentVocab.context || currentVocab.word,
+                        getExpectedAnswer(currentVocab),
+                        userAnswer + (inputType === 'speech' ? " 🎙️" : " ✍️"),
+                        false,
+                        0,
+                        currentRound
+                    );
+                }
                 if (inputType === 'speech') {
                     currentQuestionFailCount++;
                     currentQuestionWrongSTT.push(userAnswer);
@@ -2562,7 +2586,8 @@
                     studentAnswer: studentSentence + ' 🧩',
                     isCorrect: true,
                     points: 10,
-                    wrongAttempts: 'Không có'
+                    wrongAttempts: 'Không có',
+                    round: currentRound
                 });
                 saveSessionToLocalStorage(); // Lưu tiến trình ngay sau khi ghép đúng câu
 
@@ -2578,6 +2603,14 @@
                 }
             } else {
                 // Sai
+                recordDetailedAttempt(
+                    round1TargetSentence,
+                    round1TargetSentence,
+                    studentSentence + ' 🧩',
+                    false,
+                    0,
+                    currentRound
+                );
                 if (feedback) {
                     feedback.className = 'feedback error';
                     feedback.innerHTML = `❌ Chưa đúng thứ tự các từ. Bạn xếp là: "${studentSentence}". Hãy bấm Nghe lại video và thử lại nhé! 🎬`;
