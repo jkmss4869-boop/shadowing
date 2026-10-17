@@ -1852,24 +1852,33 @@
             await saveResultsToGAS();
         }
 
-        async function uploadAudioToDrive(audioBase64, fileName, folderId, mimeType) {
+        async function uploadAudioToDrive(answer) {
             try {
-                const resp = await fetch(WEB_APP_URL, {
+                await fetch(WEB_APP_URL, {
                     method: 'POST',
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify({
                         action: 'saveRecording',
-                        audioBase64: audioBase64,
-                        fileName: fileName,
-                        folderId: folderId,
-                        mimeType: mimeType || 'audio/webm'
+                        audioBase64: answer.audioBase64,
+                        fileName: answer.audioFileName,
+                        folderId: answer.folderId,
+                        mimeType: answer.mimeType || 'audio/webm',
+                        name: studentName,
+                        sheetName: currentSheetName,
+                        question: answer.question,
+                        targetWord: answer.targetWord,
+                        studentAnswer: answer.studentAnswer,
+                        round: answer.round
                     })
                 });
-                const json = await resp.json();
-                return json.fileUrl || null;
+                // Apps Script ContentService redirects its response to another
+                // origin, so browsers cannot reliably expose its JSON to fetch.
+                // The Apps Script action writes the created Drive URL to Recordings.
+                return true;
             } catch (e) {
                 console.error('Lỗi upload audio:', e);
-                return null;
+                return false;
             }
         }
 
@@ -1886,16 +1895,10 @@
                 for (let i = 0; i < answersWithAudio.length; i++) {
                     const ans = answersWithAudio[i];
                     statusEl.innerText = `⏳ Đang upload bản ghi âm ${i + 1}/${answersWithAudio.length}...`;
-                    const fileUrl = await uploadAudioToDrive(
-                        ans.audioBase64,
-                        ans.audioFileName,
-                        ans.folderId,
-                        ans.mimeType
-                    );
-                    if (fileUrl) {
-                        ans.recordingUrl = fileUrl;
+                    const requestSent = await uploadAudioToDrive(ans);
+                    if (requestSent) {
                         uploadedCount++;
-                        console.log(`✅ Upload thành công [${i+1}]: ${fileUrl}`);
+                        console.log(`📤 Đã gửi yêu cầu upload bản ghi âm [${i+1}]: ${ans.audioFileName}`);
                     } else {
                         console.warn(`❌ Upload thất bại [${i+1}]: ${ans.audioFileName} — Kiểm tra Apps Script đã redeploy chưa?`);
                     }
@@ -1929,7 +1932,7 @@
                 });
 
                 statusEl.innerText = uploadedCount > 0
-                    ? `✅ Đã gửi điểm & ${uploadedCount}/${answersWithAudio.length} bản ghi âm về hệ thống!`
+                    ? `✅ Đã gửi điểm & yêu cầu lưu ${uploadedCount}/${answersWithAudio.length} bản ghi âm. Mở tab Recordings để kiểm tra link Drive.`
                     : answersWithAudio.length > 0
                         ? "✅ Đã gửi điểm! ⚠️ Bản ghi âm upload thất bại — xem Console (F12) để biết lý do."
                         : "✅ Đã gửi điểm về hệ thống!";
