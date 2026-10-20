@@ -274,6 +274,14 @@
             opacity: 0.4;
         }
 
+        .word-chip.drop-before {
+            box-shadow: -4px 0 0 var(--primary);
+        }
+
+        .word-chip.drop-after {
+            box-shadow: 4px 0 0 var(--primary);
+        }
+
         #drag-answer-zone.drag-over {
             border-color: var(--primary) !important;
             background: #f3e8ff !important;
@@ -823,7 +831,7 @@
                             style="min-height: 60px; padding: 10px; background: #ffffff; border: 2px dashed #94a3b8; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 15px; transition: all 0.2s;">
                             <span class="drag-placeholder"
                                 style="color: #94a3b8; font-style: italic; font-size: 0.9rem; user-select: none; width: 100%; text-align: center;">Chạm
-                                hoặc kéo thả các từ bên dưới vào đây...</span>
+                                hoặc kéo thả từ vào đây; kéo từ trong câu để đổi vị trí...</span>
                         </div>
 
                         <!-- KHO TỪ XÁO TRỘN (WORD POOL) -->
@@ -2476,6 +2484,47 @@
 
             chip.ondragend = () => {
                 chip.classList.remove('dragging');
+                document.querySelectorAll('.word-chip.drop-before, .word-chip.drop-after').forEach(el => {
+                    el.classList.remove('drop-before', 'drop-after');
+                });
+            };
+
+            // Kéo thả trực tiếp lên một từ để chèn từ đó trước/sau vị trí đang trỏ tới.
+            chip.ondragover = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const rect = chip.getBoundingClientRect();
+                const after = e.clientX > rect.left + rect.width / 2;
+                chip.classList.toggle('drop-after', after);
+                chip.classList.toggle('drop-before', !after);
+            };
+
+            chip.ondragleave = () => chip.classList.remove('drop-before', 'drop-after');
+
+            chip.ondrop = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                chip.classList.remove('drop-before', 'drop-after');
+                const checkBtn = document.getElementById('drag-check-btn');
+                if (checkBtn && checkBtn.disabled) return;
+
+                const tokenId = e.dataTransfer.getData('text/plain');
+                const sourceZone = e.dataTransfer.getData('source-zone');
+                const sourceList = sourceZone === 'pool' ? poolTokens : placedTokens;
+                const token = sourceList.find(t => t.id === tokenId);
+                if (!token) return;
+
+                poolTokens = poolTokens.filter(t => t.id !== tokenId);
+                placedTokens = placedTokens.filter(t => t.id !== tokenId);
+                const targetList = zoneType === 'pool' ? poolTokens : placedTokens;
+                let insertAt = targetList.findIndex(t => t.id === token.id);
+                // The target may have moved between zones; use the chip's token as anchor.
+                insertAt = targetList.findIndex(t => t.id === chip.dataset.id);
+                const rect = chip.getBoundingClientRect();
+                if (e.clientX > rect.left + rect.width / 2) insertAt++;
+                if (insertAt < 0) insertAt = targetList.length;
+                targetList.splice(insertAt, 0, token);
+                renderDragDropZones();
             };
 
             return chip;
